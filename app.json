@@ -22,7 +22,7 @@
       "package": "com.arnab.foodHub" 
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/arnab.png"
     }
   }
 }

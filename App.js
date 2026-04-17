@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-// NEW: Import 'Alert' from react-native
-import { StyleSheet, ActivityIndicator, BackHandler, StatusBar, Alert } from 'react-native';
+import { StyleSheet, ActivityIndicator, BackHandler, StatusBar, Alert, View, Text } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -8,14 +7,13 @@ function MainWebScreen() {
   const webviewRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [canGoBack, setCanGoBack] = useState(false);
+  const [hasError, setHasError] = useState(false); // NEW: Track network errors
 
-  // NEW: This JavaScript gets injected into the website when it loads
   const injectedJS = `
     window.alert = function(message) {
-      // Instead of showing the default browser alert, send the text to React Native
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'alert', message: message }));
     };
-    true; // Required so the injection doesn't crash
+    true; 
   `;
 
   useEffect(() => {
@@ -35,39 +33,55 @@ function MainWebScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      <WebView 
-        ref={webviewRef}
-        source={{ uri: 'https://uemfood.netlify.app/' }} 
-        onLoadEnd={() => setLoading(false)}
-        onNavigationStateChange={(navState) => setCanGoBack(navState.canGoBack)}
-        
-        // NEW: Add the injected script
-        injectedJavaScript={injectedJS}
-        
-        // NEW: Listen for messages sent from the injected script
-        onMessage={(event) => {
-          try {
-            const data = JSON.parse(event.nativeEvent.data);
-            if (data.type === 'alert') {
-              // Display a clean, native React Native alert
-              Alert.alert(
-                "foodHub", // You can change this title to your App Name like "UEM Food"
-                data.message,
-                [{ text: "OK" }]
-              );
-            }
-          } catch (error) {
-            // Fails silently if the message isn't JSON (prevents app crashes)
-          }
-        }}
+      {!hasError ? (
+        <WebView 
+          ref={webviewRef}
+          source={{ uri: 'https://uemfood.netlify.app/' }} 
+          
+          // NEW: Spoof a standard Chrome mobile browser to bypass Netlify bot protection
+          userAgent="Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36"
+          
+          onLoadEnd={() => setLoading(false)}
+          onNavigationStateChange={(navState) => setCanGoBack(navState.canGoBack)}
+          
+          // NEW: Catch the ERR_CONNECTION_CLOSED error gracefully
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.warn('WebView error: ', nativeEvent);
+            setLoading(false);
+            setHasError(true);
+          }}
 
-        androidLayerType="hardware" 
-        domStorageEnabled={true}
-        javaScriptEnabled={true}
-        style={{ flex: 1 }}
-      />
+          injectedJavaScript={injectedJS}
+          onMessage={(event) => {
+            try {
+              const data = JSON.parse(event.nativeEvent.data);
+              if (data.type === 'alert') {
+                Alert.alert(
+                  "foodHub", 
+                  data.message,
+                  [{ text: "OK" }]
+                );
+              }
+            } catch (error) {
+              // Fails silently
+            }
+          }}
+
+          androidLayerType="hardware" 
+          domStorageEnabled={true}
+          javaScriptEnabled={true}
+          style={{ flex: 1 }}
+        />
+      ) : (
+        // NEW: Show a friendly error screen instead of a blank page
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Could not connect to the server.</Text>
+          <Text style={styles.errorSubText}>Please check your internet connection and try again.</Text>
+        </View>
+      )}
       
-      {loading && (
+      {loading && !hasError && (
         <ActivityIndicator 
           size="large" 
           color="#ff6600" 
@@ -98,5 +112,23 @@ const styles = StyleSheet.create({
     left: '50%', 
     marginLeft: -20, 
     marginTop: -20 
+  },
+  // NEW styles for the error screen
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  errorSubText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   }
 });

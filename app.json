@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "foodHub",
+    "name": "Hungry Baba",
     "slug": "foodHub",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/arnab.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#75e0ab"
     },
     "ios": {
       "supportsTablet": true
@@ -17,12 +17,17 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/arnab.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#75e0ab"
       },
-      "package": "com.arnab.foodHub" 
+      "package": "com.hub.food"
     },
     "web": {
       "favicon": "./assets/arnab.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8e64a366-b766-4d64-9875-83648109e1ea"
+      }
     }
   }
 }

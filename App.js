@@ -2,12 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { StyleSheet, ActivityIndicator, BackHandler, StatusBar, Alert, View, Text } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
+
+SplashScreen.preventAutoHideAsync();
 
 function MainWebScreen() {
   const webviewRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [canGoBack, setCanGoBack] = useState(false);
-  const [hasError, setHasError] = useState(false); // NEW: Track network errors
+  const [hasError, setHasError] = useState(false); 
 
   const injectedJS = `
     window.alert = function(message) {
@@ -31,20 +34,19 @@ function MainWebScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      {/* Explicitly set the background color for Android so the dark icons are always visible */}
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
       
       {!hasError ? (
         <WebView 
           ref={webviewRef}
           source={{ uri: 'https://uemfood.netlify.app/' }} 
           
-          // NEW: Spoof a standard Chrome mobile browser to bypass Netlify bot protection
           userAgent="Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36"
           
           onLoadEnd={() => setLoading(false)}
           onNavigationStateChange={(navState) => setCanGoBack(navState.canGoBack)}
           
-          // NEW: Catch the ERR_CONNECTION_CLOSED error gracefully
           onError={(syntheticEvent) => {
             const { nativeEvent } = syntheticEvent;
             console.warn('WebView error: ', nativeEvent);
@@ -56,9 +58,9 @@ function MainWebScreen() {
           onMessage={(event) => {
             try {
               const data = JSON.parse(event.nativeEvent.data);
-              if (data.type === 'alert') {
+              if (data.type == 'alert') {
                 Alert.alert(
-                  "foodHub", 
+                  "HungryBaba", 
                   data.message,
                   [{ text: "OK" }]
                 );
@@ -74,7 +76,6 @@ function MainWebScreen() {
           style={{ flex: 1 }}
         />
       ) : (
-        // NEW: Show a friendly error screen instead of a blank page
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Could not connect to the server.</Text>
           <Text style={styles.errorSubText}>Please check your internet connection and try again.</Text>
@@ -93,6 +94,20 @@ function MainWebScreen() {
 }
 
 export default function App() {
+  useEffect(() => {
+    async function holdSplashScreen() {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        await SplashScreen.hideAsync();
+      }
+    }
+
+    holdSplashScreen();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <MainWebScreen />
@@ -103,8 +118,8 @@ export default function App() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    paddingTop: StatusBar.currentHeight || 0,
-    backgroundColor: '#fff' 
+    // Removed the manual paddingTop because SafeAreaView handles it automatically
+    backgroundColor: '#ffffff' // Fixed the invalid hex code
   },
   loader: { 
     position: 'absolute', 
@@ -113,7 +128,6 @@ const styles = StyleSheet.create({
     marginLeft: -20, 
     marginTop: -20 
   },
-  // NEW styles for the error screen
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
